@@ -30,24 +30,51 @@ This is the Unknown Horizons launcher; it looks for FIFE and tries
 to start the game. You usually don't need to work with this directly.
 If you want to dig into the game, continue to horizons/main.py. """
 
+import functools
 import gettext
 import optparse
+import os
+import signal
+import sys
 
 
 def main():
+	# abort silently on signal
+	signal.signal(signal.SIGINT, functools.partial(exithandler, 130))
+	signal.signal(signal.SIGTERM, functools.partial(exithandler, 1))
+
 	init_environment()
+	create_user_dirs()
 
 	options = get_option_parser().parse_args()[0]
 
 	import horizons.main
 
-	if horizons.main.start(options):
-		print 'Thank you for using Unknown Horizons!'
+	horizons.main.start(options)
+
+
+def exithandler(exitcode, signum, frame):
+	"""Handles a kill quietly"""
+	signal.signal(signal.SIGINT, signal.SIG_IGN)
+	signal.signal(signal.SIGTERM, signal.SIG_IGN)
+	print ''
+	print 'Oh my god! They killed UH.'
+	print 'You bastards!'
+	sys.exit(exitcode)
 
 
 def init_environment():
 	# install dummy translation
 	gettext.install('', unicode=True)
+
+
+def create_user_dirs():
+	"""Creates the userdir and subdirs. Includes from horizons."""
+	from horizons.constants import PATHS
+
+	for directory in (PATHS.USER_DIR, PATHS.LOG_DIR, PATHS.SCREENSHOT_DIR):
+		if not os.path.isdir(directory):
+			os.makedirs(directory)
 	
 
 def get_option_parser():
