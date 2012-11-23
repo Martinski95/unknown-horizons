@@ -34,11 +34,14 @@ import functools
 import gettext
 import optparse
 import os
+import platform
 import signal
 import sys
 
 
 def main():
+	check_dependencies()
+
 	# abort silently on signal
 	signal.signal(signal.SIGINT, functools.partial(exithandler, 130))
 	signal.signal(signal.SIGTERM, functools.partial(exithandler, 1))
@@ -53,13 +56,31 @@ def main():
 	horizons.main.start(options)
 
 
+def check_dependencies():
+	"""Check if python2 is used and required libraries are available."""
+
+	# python up to version 2.6.1 returns an int. http://bugs.python.org/issue5561
+	if platform.python_version_tuple()[0] not in (2, '2'):
+		show_error_message('Unsupported Python version', 'Python 2 is required to run Unknown Horizons.')
+
+	try:
+		import yaml
+	except ImportError:
+		headline = 'Error: Unable to find required library "PyYAML".'
+		msg = ('PyYAML (a required library) is missing and needs to be installed.\n' +
+		       'The Windows installer is available at http://pyyaml.org/wiki/PyYAML. ' +
+		       'Linux users should find it using their package manager under the name ' +
+			   '"pyyaml" or "python-yaml".')
+		show_error_message(headline, msg)
+
+
 def exithandler(exitcode, signum, frame):
 	"""Handles a kill quietly"""
 	signal.signal(signal.SIGINT, signal.SIG_IGN)
 	signal.signal(signal.SIGTERM, signal.SIG_IGN)
-	print ''
-	print 'Oh my god! They killed UH.'
-	print 'You bastards!'
+	print('')
+	print('Oh my god! They killed UH.')
+	print('You bastards!')
 	sys.exit(exitcode)
 
 
@@ -173,6 +194,23 @@ def get_option_parser():
 	p.add_option_group(dev_group)
 
 	return p
+
+
+def show_error_message(title, message):
+	print(title)
+	print(message)
+
+	try:
+		import Tkinter
+		import tkMessageBox
+		window = Tkinter.Tk()
+		window.wm_withdraw()
+		tkMessageBox.showerror(title, message)
+	except ImportError:
+		# tkinter may be missing
+		pass
+
+	sys.exit(1)
 
 
 if __name__ == '__main__':
